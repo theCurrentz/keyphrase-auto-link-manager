@@ -160,7 +160,31 @@ function kpal_columns($column) {
 //keyphrase auto linker function
 function kpal_render($content)
 {
+  global $page,
+         $numpages,
+         $multipage;
+
+  //used to throttle occurences on string replace
+  $kpalthrottle = (($multipage) ? 3 : 11);
+  if($page == 2) echo $kpalthrottle;
+  define("THROTTLE", $kpalthrottle);
+
   $content = $content;
+
+  //defines an enhanced str replace method with a limit parameter
+  function str_replace_limit($find, $replacement, $subject, $limit = 0) {
+
+    if ($limit == 0)
+      return str_replace($find, $replacement, $subject);
+
+    for ($i = 0; $i < count($find); $i++) {
+      $find[$i] = '/' . preg_quote($find[$i],'/') . '/';
+    }
+
+    return preg_replace($find, $replacement, $subject, $limit);
+  }
+
+
   //query all keyphrase sets
   $kpal_query = new WP_Query(
     array(
@@ -183,13 +207,18 @@ function kpal_render($content)
           //foreach value in keyphrases array, perform a str replace for the targeted phrase
           foreach($keyphrases as $phrase)
           {
-            $content = str_replace($phrase, $url . $phrase . '</a>', $content);
+            $kpalthrottle = constant('THROTTLE');
+            $phraseToLower = strtolower($phrase);
+            $phraseCases = array($phrase, $phraseToLower);
+            $phraseCasesReplace = array($url . $phrase . '</a>', $url . $phraseToLower . '</a>');
+
+            $content = str_replace_limit($phraseCases, $phraseCasesReplace, $content, $kpalthrottle);
           }
 
     }
     wp_reset_postdata();
   }
-
+  $content = $content;
   return $content;
 }
 
