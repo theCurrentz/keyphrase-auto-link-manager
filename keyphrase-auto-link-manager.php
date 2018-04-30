@@ -30,4 +30,5 @@ function enqueue_keyphrase_auto_link_manager_scripts() {
 
 add_action('admin_enqueue_scripts', 'enqueue_keyphrase_auto_link_manager_scripts');
 
-require_once( plugin_dir_path( __FILE__ ) . '/includes/options-keyphrase-auto-link-manager.php');
+include( plugin_dir_path( __FILE__ ) . '/meta-box/keyphrase-meta-box.php');
+include( plugin_dir_path( __FILE__ ) . '/includes/options-keyphrase-auto-link-manager.php');

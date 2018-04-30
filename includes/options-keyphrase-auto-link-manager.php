@@ -1,55 +1,63 @@
 <?php
+
+//helper function to evaluate value of checkbox
+//searches for a match in post meta data to display checked
+function chroma_is_checked($needle, $haystack)
+{
+  echo ( $needle == $haystack) ? 'checked' : '';
+}
+
 global $post;
 //options panel for keyphrase management tool
 
 // Register Custom Post Type
 function kpal() {
 
-	$labels = array(
-		'name'                  => 'Keyphrases',
-		'singular_name'         => 'Keyphrase',
-		'menu_name'             => 'Keyphrases',
-		'name_admin_bar'        => 'Keyphrases',
-		'all_items'             => 'All Items',
-		'add_new'               => 'Add New',
+  $labels = array(
+    'name'                  => 'Keyphrases',
+    'singular_name'         => 'Keyphrase',
+    'menu_name'             => 'Keyphrases',
+    'name_admin_bar'        => 'Keyphrases',
+    'all_items'             => 'All Items',
+    'add_new'               => 'Add New',
     'add_new_item'          => 'Add New Keyphrase Auto Link',
-		'new_item'              => 'New Item',
-		'edit_item'             => 'Edit Item',
-		'update_item'           => 'Update Item',
-		'view_item'             => 'View Item',
-		'view_items'            => 'View Items',
-		'search_items'          => 'Search Item',
-		'not_found'             => 'Not found',
-		'not_found_in_trash'    => 'Not found in Trash',
-		'featured_image'        => 'Featured Image'
-	);
-	$args = array(
-		'label'                 => 'Keyphrase',
-		'description'           => 'Manages Keyphrases for auto linking',
-		'labels'                => $labels,
-		'supports'              => array('title'),
-		'hierarchical'          => false,
-		'public'                => true,
-		'show_ui'               => true,
-		'show_in_menu'          => true,
-		'menu_position'         => 80,
-		'menu_icon'             => 'dashicons-admin-links',
-		'show_in_admin_bar'     => true,
-		'show_in_nav_menus'     => false,
-		'can_export'            => false,
-		'has_archive'           => false,
-		'exclude_from_search'   => true,
-		'publicly_queryable'    => false,
-		'capability_type'       => 'page',
-	);
-	register_post_type( 'keyphrase', $args );
+    'new_item'              => 'New Item',
+    'edit_item'             => 'Edit Item',
+    'update_item'           => 'Update Item',
+    'view_item'             => 'View Item',
+    'view_items'            => 'View Items',
+    'search_items'          => 'Search Item',
+    'not_found'             => 'Not found',
+    'not_found_in_trash'    => 'Not found in Trash',
+    'featured_image'        => 'Featured Image'
+  );
+  $args = array(
+    'label'                 => 'Keyphrase',
+    'description'           => 'Manages Keyphrases for auto linking',
+    'labels'                => $labels,
+    'supports'              => array('title'),
+    'hierarchical'          => false,
+    'public'                => true,
+    'show_ui'               => true,
+    'show_in_menu'          => true,
+    'menu_position'         => 80,
+    'menu_icon'             => 'dashicons-admin-links',
+    'show_in_admin_bar'     => true,
+    'show_in_nav_menus'     => false,
+    'can_export'            => false,
+    'has_archive'           => false,
+    'exclude_from_search'   => true,
+    'publicly_queryable'    => false,
+    'capability_type'       => 'page',
+  );
+  register_post_type( 'keyphrase', $args );
 
 }
 add_action( 'init', 'kpal', 0 );
 
 //remove yoast from our custom post type
 function my_remove_wp_seo_meta_box() {
-	remove_meta_box('wpseo_meta', 'keyphrase', 'normal');
+  remove_meta_box('wpseo_meta', 'keyphrase', 'normal');
 }
 add_action('add_meta_boxes', 'my_remove_wp_seo_meta_box', 100);
 
@@ -61,8 +69,8 @@ add_action( 'load-post-new.php', 'kpal_post_meta_boxes_setup' );
 //Meta box setup function.
 function kpal_post_meta_boxes_setup() {
 
-	//Add meta boxes on the 'add_meta_boxes' hook.
-	add_action( 'add_meta_boxes', 'kpal_add_post_meta_boxes' );
+  //Add meta boxes on the 'add_meta_boxes' hook.
+  add_action( 'add_meta_boxes', 'kpal_add_post_meta_boxes' );
 }
 
 //Create one or more meta boxes to be displayed on the post editor screen.
@@ -87,14 +95,18 @@ function kpal_keyphrases_meta_box($post) {
   wp_nonce_field( basename( __FILE__ ), 'kpal_keyphrases_nonce' );
   ?>
   <p>
-    <label>Keyphrases - comma delimited</label>
+    <?php $selected = get_post_meta( $post->ID, 'kpal_keyphrases_throttle', true ); ?>
+    <label>Keyphrases</label>
     <input type="text" name="kpal_keyphrases_words" id="kpal_keyphrases_words" class="widefat" value="<?php echo get_post_meta($post->ID, 'kpal_keyphrases_words')[0];  ?>">
     <br /><br />
     <label>URL to inject</label>
     <input type="text" name="kpal_keyphrases_url" id="kpal_keyphrases_url" class="widefat" value="<?php echo get_post_meta($post->ID, 'kpal_keyphrases_url')[0];  ?>">
+    <br /><br />
+    <label>Only one per page?</label>
+    <input type="checkbox" name="kpal_keyphrases_throttle" id="kpal_keyphrases_throttle" value="Yes" <?php chroma_is_checked('Yes', $selected); ?> >Yes, Just 1
     <br />
   </p>
-<?php
+  <?php
 }
 
 // Save the keyphrase meta box's post metadata.
@@ -102,41 +114,39 @@ function kpal_keyphrases_save_meta( $post_id, $post ) {
 
   // verify meta box nonce
   if ( !isset( $_POST['kpal_keyphrases_nonce'] ) || !wp_verify_nonce( $_POST['kpal_keyphrases_nonce'], basename( __FILE__ ) ) ) {
-  	return;
+    return;
   }
 
   if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
-  		return;
+    return;
   }
 
   if ( !current_user_can( 'edit_post', $post->ID ) ) {
-   	return;
+    return;
   }
 
   $kpal_phrases = $_POST['kpal_keyphrases_words'];
   $kpal_url = $_POST['kpal_keyphrases_url'];
+  $kpal_throttle = $_POST['kpal_keyphrases_throttle'];
 
   update_post_meta( $post->ID, 'kpal_keyphrases_words', $kpal_phrases );
   update_post_meta( $post->ID, 'kpal_keyphrases_url', $kpal_url );
-
+  update_post_meta( $post->ID, 'kpal_keyphrases_throttle', $kpal_throttle );
 }
 add_action( 'save_post', 'kpal_keyphrases_save_meta', 10, 2 );
-
-
 
 //add custom columns to post type admin interface and fill with meta content
 function add_keyphrase_columns($columns) {
 
-    return array(
-      'title'=>'Title',
-      'kpal_keyphrases_words'=>'Keyphrases',
-      'kpal_keyphrases_url'=>'URL'
-    );
+  return array(
+    'title'=>'Title',
+    'kpal_keyphrases_words'=>'Keyphrases',
+    'kpal_keyphrases_url'=>'URL',
+    'kpal_keyphrases_throttle'=> 'Throttle'
+  );
 
 }
 add_filter('manage_keyphrase_posts_columns' , 'add_keyphrase_columns');
-
-
 
 add_action('manage_posts_custom_column', 'kpal_columns', 10, 2);
 
@@ -146,44 +156,26 @@ function kpal_columns($column) {
   switch ( $column ) {
 
     case 'kpal_keyphrases_words':
-      echo get_post_meta($post->ID, 'kpal_keyphrases_words')[0];
-      break;
+    echo get_post_meta($post->ID, 'kpal_keyphrases_words')[0];
+    break;
 
     case 'kpal_keyphrases_url':
-      echo get_post_meta($post->ID, 'kpal_keyphrases_words')[0];
-      break;
+    echo get_post_meta($post->ID, 'kpal_keyphrases_words')[0];
+    break;
 
   }
 }
 
-
 //keyphrase auto linker function
 function kpal_render($content)
 {
+  //if meta box option isn't enabled
+  if ( get_post_meta( get_the_ID(), 'keyphrase_options', true) !== "on")
+    return $content;
+
   global $page,
-         $numpages,
-         $multipage;
-
-  //used to throttle occurences on string replace
-  $kpalthrottle = (($multipage) ? 3 : 11);
-  if($page == 2) echo $kpalthrottle;
-  define("THROTTLE", $kpalthrottle);
-
-  $content = $content;
-
-  //defines an enhanced str replace method with a limit parameter
-  function str_replace_limit($find, $replacement, $subject, $limit = 0) {
-
-    if ($limit == 0)
-      return str_replace($find, $replacement, $subject);
-
-    for ($i = 0; $i < count($find); $i++) {
-      $find[$i] = '/' . preg_quote($find[$i],'/') . '/';
-    }
-
-    return preg_replace($find, $replacement, $subject, $limit);
-  }
-
+  $numpages,
+  $multipage;
 
   //query all keyphrase sets
   $kpal_query = new WP_Query(
@@ -192,35 +184,54 @@ function kpal_render($content)
     )
   );
 
+  $kws = array();
+  $urls = array();
   //if and while we have keyphrase entries
   if ( $kpal_query->have_posts() ) {
     while ( $kpal_query->have_posts() ) {
       $kpal_query->the_post();
-          //store keyphrase and url info in variables
-          $keyphrases = get_post_meta(get_the_ID(), 'kpal_keyphrases_words')[0];
-          //explode keyphrases into an array
-          $keyphrases = explode(",", $keyphrases);
-          $url = get_post_meta(get_the_ID(), "kpal_keyphrases_url")[0];
-          $url = preg_replace('/\s+/', '', $url);
-          $url = '<a href="'.$url.'">';
-
-          //foreach value in keyphrases array, perform a str replace for the targeted phrase
-          foreach($keyphrases as $phrase)
-          {
-            $kpalthrottle = constant('THROTTLE');
-            $phraseToLower = strtolower($phrase);
-            $phraseCases = array($phrase, $phraseToLower);
-            $phraseCasesReplace = array($url . $phrase . '</a>', $url . $phraseToLower . '</a>');
-
-            $content = str_replace_limit($phraseCases, $phraseCasesReplace, $content, $kpalthrottle);
-          }
-
+      //store keyphrase and url info in variables
+      $phrase = get_post_meta(get_the_ID(), 'kpal_keyphrases_words')[0];
+      $url = get_post_meta(get_the_ID(), "kpal_keyphrases_url")[0];
+      $url = preg_replace('/\s+/', '', $url);
+      array_push($kws, $phrase);
+      array_push($urls, $url);
     }
     wp_reset_postdata();
   }
-  $content = $content;
-  return $content;
+    if(count($kws) <= 0)
+      return $content;
+    $content = mb_convert_encoding($content, 'HTML-ENTITIES', "UTF-8");
+    $dom = new DOMDocument();
+    $dom->loadHTML($content);
+    $dom->encoding = 'utf-8';
+    $xpath = new DOMXpath($dom);
+    //xpath query targets all pargraphs but excludes A hrefs
+    $paragraphs = $xpath->query("//p[not(self::a)]");
+
+    $limit = (get_post_meta( get_the_ID(), 'kpal_keyphrases_throttle', true ) == "Yes") ? 1 : count($kws);
+    foreach ($paragraphs as $p)
+    {
+      for($i=0; $i < $limit; $i++) {
+         if (preg_match('/'.$kws[$i].'/iUx', $p->nodeValue) <= 0)
+          continue;
+        //collect a string with the replacement
+        $pReplace = preg_replace('/'.$kws[$i].'/iUx', '<a href="'.$urls[$i].'" rel="nofollow">'.$kws[$i].'</a>', $p->nodeValue, 1);
+        //initialze a dom fragment
+        $fragment = $dom->createDocumentFragment();
+        //set fragmenet to have the pReplace as inner content
+        $fragment->appendXML($pReplace);
+        //replace the node with the desired fragment
+        $p->nodeValue = '';
+        $p->appendChild($fragment);
+        //save the node to the $dom object
+        $dom->saveHTML($p);
+      }
+    }
+
+   $content = preg_replace('/^<!DOCTYPE.+?>/','',str_replace(array('<html>', '</html>', '<body>', '</body>'),array('', '', '', ''),$dom->saveHTML()));
+    return $content;
 }
 
-//filter the_content with kpal render
+//filter the_content with kpal
 add_filter( 'the_content', 'kpal_render');
