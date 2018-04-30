@@ -95,15 +95,14 @@ function kpal_keyphrases_meta_box($post) {
   wp_nonce_field( basename( __FILE__ ), 'kpal_keyphrases_nonce' );
   ?>
   <p>
-    <?php $selected = get_post_meta( $post->ID, 'kpal_keyphrases_throttle', true ); ?>
     <label>Keyphrases</label>
     <input type="text" name="kpal_keyphrases_words" id="kpal_keyphrases_words" class="widefat" value="<?php echo get_post_meta($post->ID, 'kpal_keyphrases_words')[0];  ?>">
     <br /><br />
     <label>URL to inject</label>
     <input type="text" name="kpal_keyphrases_url" id="kpal_keyphrases_url" class="widefat" value="<?php echo get_post_meta($post->ID, 'kpal_keyphrases_url')[0];  ?>">
     <br /><br />
-    <label>Only one per page?</label>
-    <input type="checkbox" name="kpal_keyphrases_throttle" id="kpal_keyphrases_throttle" value="Yes" <?php chroma_is_checked('Yes', $selected); ?> >Yes, Just 1
+    <label>Limit per page:</label>
+    <input type="text" name="kpal_keyphrases_throttle" id="kpal_keyphrases_throttle" value="<?php echo get_post_meta( $post->ID, 'kpal_keyphrases_throttle', true ); ?>">
     <br />
   </p>
   <?php
@@ -140,8 +139,8 @@ function add_keyphrase_columns($columns) {
 
   return array(
     'title'=>'Title',
-    'kpal_keyphrases_words'=>'Keyphrases',
-    'kpal_keyphrases_url'=>'URL',
+    'kpal_keyphrases_words'=>'Keyphrase',
+    'kpal_keyphrases_url'=>'Url',
     'kpal_keyphrases_throttle'=> 'Throttle'
   );
 
@@ -186,6 +185,7 @@ function kpal_render($content)
 
   $kws = array();
   $urls = array();
+  $limits = array();
   //if and while we have keyphrase entries
   if ( $kpal_query->have_posts() ) {
     while ( $kpal_query->have_posts() ) {
@@ -194,8 +194,10 @@ function kpal_render($content)
       $phrase = get_post_meta(get_the_ID(), 'kpal_keyphrases_words')[0];
       $url = get_post_meta(get_the_ID(), "kpal_keyphrases_url")[0];
       $url = preg_replace('/\s+/', '', $url);
+      $limit = (get_post_meta( get_the_ID(), 'kpal_keyphrases_throttle', true ) >= 0) ? get_post_meta( get_the_ID(), 'kpal_keyphrases_throttle', true ) : 20;
       array_push($kws, $phrase);
       array_push($urls, $url);
+      array_push($limits, $limit);
     }
     wp_reset_postdata();
   }
@@ -209,14 +211,23 @@ function kpal_render($content)
     //xpath query targets all pargraphs but excludes A hrefs
     $paragraphs = $xpath->query("//p[not(self::a)]");
 
-    $limit = (get_post_meta( get_the_ID(), 'kpal_keyphrases_throttle', true ) == "Yes") ? 1 : count($kws);
-    foreach ($paragraphs as $p)
+    for($i=0; $i < count($kws); $i++)
     {
-      for($i=0; $i < $limit; $i++) {
+      //initialze start variable for reference against the limit
+      $start = 0;
+      $currentLimit = $limits[$i];
+
+      foreach ($paragraphs as $p)
+      {
+        //compare start to limit and end if necessary
+        if($start >= $currentLimit)
+          continue;
          if (preg_match('/'.$kws[$i].'/iUx', $p->nodeValue) <= 0)
           continue;
         //collect a string with the replacement
         $pReplace = preg_replace('/'.$kws[$i].'/iUx', '<a href="'.$urls[$i].'" rel="nofollow">'.$kws[$i].'</a>', $p->nodeValue, 1);
+        //increment start to determine if limit has been met
+        $start++;
         //initialze a dom fragment
         $fragment = $dom->createDocumentFragment();
         //set fragmenet to have the pReplace as inner content
