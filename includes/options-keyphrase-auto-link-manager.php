@@ -216,18 +216,19 @@ function kpal_render($content)
       //initialze start variable for reference against the limit
       $start = 0;
       $currentLimit = $limits[$i];
-
+      $pregLimit = $currentLimit;
       foreach ($paragraphs as $p)
       {
         //compare start to limit and end if necessary
         if($start >= $currentLimit)
           continue;
-         if (preg_match('/'.$kws[$i].'/iUx', $p->nodeValue) <= 0)
+        if (stripos(strtolower($p->nodeValue), $kws[$i]) <= 0)
           continue;
         //collect a string with the replacement
-        $pReplace = preg_replace('/'.$kws[$i].'/iUx', '<a href="'.$urls[$i].'" rel="nofollow">'.$kws[$i].'</a>', $p->nodeValue, 1);
+        $pReplace = preg_replace('/'.preg_quote($kws[$i], '/').'/i', '<a href="'.$urls[$i].'">'.$kws[$i].'</a>', $p->textContent, $pregLimit, $matches);
         //increment start to determine if limit has been met
-        $start++;
+        $pregLimit -= $matches;
+        $start += $matches;
         //initialze a dom fragment
         $fragment = $dom->createDocumentFragment();
         //set fragmenet to have the pReplace as inner content
@@ -245,4 +246,4 @@ function kpal_render($content)
 }
 
 //filter the_content with kpal
-add_filter( 'the_content', 'kpal_render');
+add_filter( 'the_content', 'kpal_render', 99);
